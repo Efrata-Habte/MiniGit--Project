@@ -24,3 +24,31 @@ void MiniGit::log() {
        
     }
 }
+void MiniGit::checkout(const std::string& name) {
+    // Check if name is a branch
+    fs::path branchPath = ".minigit/refs/heads/" + name;
+    std::string commitHash;
+    if (fs::exists(branchPath)) {
+        std::ifstream branchFile(branchPath);
+        std::getline(branchFile, commitHash);
+        branchFile.close();
+        // Update HEAD
+        std::ofstream headFile(".minigit/HEAD");
+        headFile << "ref: refs/heads/" << name << "\n";
+        headFile.close();
+        std::cout << "Switched to branch '" << name << "'\n";
+    } else {
+        // Assume it's a commit hash
+        commitHash = name;
+        // Validate commit exists
+        fs::path commitPath = ".minigit/objects/" + commitHash;
+        if (!fs::exists(commitPath)) {
+            std::cout << "Unknown branch or commit: " << name << "\n";
+            return;
+        }
+        // Update HEAD to detached
+        std::ofstream headFile(".minigit/HEAD");
+        headFile << commitHash << "\n";
+        headFile.close();
+        std::cout << "HEAD is now at " << commitHash.substr(0, 8) << "\n";
+    }
