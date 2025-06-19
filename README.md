@@ -21,7 +21,13 @@ void MiniGit::log() {
         std::getline(commitFile, line);
         if (line.rfind("parent: ", 0) == 0) parent = line.substr(8);
         std::getline(commitFile, line);
-       
+        if (line.rfind("date: ", 0) == 0) date = line.substr(6);
+        std::getline(commitFile, line);
+        if (line.rfind("message: ", 0) == 0) message = line.substr(9);
+        std::cout << "commit " << commitHash << "\n";
+        std::cout << "Date:   " << date;
+        std::cout << "    " << message << "\n\n";
+        commitHash = parent;
     }
 }
 
