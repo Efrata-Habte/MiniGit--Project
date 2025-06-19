@@ -11,3 +11,11 @@ std::string sha1(const std::string& data) {
         oss << std::hex << std::setw(2) << std::setfill('0') << (int)hash[i];
     return oss.str();
 }
+
+void MiniGit::init() {
+    fs::path minigitDir = ".minigit";
+    if (fs::exists(minigitDir)) {
+        std::cout << ".minigit already exists.\n";
+        return;
+    }
+}
