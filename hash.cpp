@@ -18,4 +18,8 @@ void MiniGit::init() {
         std::cout << ".minigit already exists.\n";
         return;
     }
+    fs::create_directory(minigitDir);
+    fs::create_directory(minigitDir / "objects");
+    fs::create_directories(minigitDir / "refs" / "heads");
+
 }
