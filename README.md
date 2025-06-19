@@ -24,6 +24,24 @@ void MiniGit::log() {
        
     }
 }
+
+void MiniGit::branch(const std::string& branchName) {
+    // Create a new branch pointer to current commit
+    std::ifstream headFile(".minigit/HEAD");
+    std::string refLine;
+    std::getline(headFile, refLine);
+    std::string branchRef = refLine.substr(5); // skip "ref: "
+    headFile.close();
+    std::ifstream branchHead(".minigit/" + branchRef);
+    std::string currentCommit;
+    std::getline(branchHead, currentCommit);
+    branchHead.close();
+    std::ofstream newBranch(".minigit/refs/heads/" + branchName);
+    newBranch << currentCommit << "\n";
+    newBranch.close();
+    std::cout << "Branch '" << branchName << "' created at " << currentCommit.substr(0, 8) << "\n";
+}
+
 void MiniGit::checkout(const std::string& name) {
     // Check if name is a branch
     fs::path branchPath = ".minigit/refs/heads/" + name;
