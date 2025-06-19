@@ -1,9 +1,15 @@
 # MiniGit--Project
+#include "minigit.h"
+#include "hash.h"
 #include <iostream>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
-
+#include <chrono>
+#include <ctime>
+#include <map>
+#include <vector>
+#include <set>
 
 void MiniGit::log() {
     // Get latest commit hash
@@ -98,3 +104,19 @@ void MiniGit::checkout(const std::string& name) {
         }
     }
 }
+
+void MiniGit::diff(const std::string& commit1, const std::string& commit2) {
+    namespace fs = std::filesystem;
+    // Helper to read file contents into vector of lines
+    auto readLines = [](const std::string& blob) -> std::vector<std::string> {
+        std::ifstream file(".minigit/objects/" + blob);
+        std::vector<std::string> lines;
+        std::string line;
+        while (std::getline(file, line)) {
+            lines.push_back(line);
+        }
+        return lines;
+    };
+}
+
+
