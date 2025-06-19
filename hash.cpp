@@ -21,5 +21,9 @@ void MiniGit::init() {
     fs::create_directory(minigitDir);
     fs::create_directory(minigitDir / "objects");
     fs::create_directories(minigitDir / "refs" / "heads");
+    std::ofstream headFile(minigitDir / "HEAD");
+    headFile << "ref: refs/heads/main\n";
+    headFile.close();
+
 
 }
