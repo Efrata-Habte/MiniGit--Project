@@ -284,6 +284,82 @@ void MiniGit::checkout(const std::string& name) {
 }
 
 //Compares the differences between two MiniGit commits.
+void MiniGit::merge(const std::string& branchName) {
+    // Check if branch exists
+    fs::path branchPath = ".minigit/refs/heads/" + branchName;
+    if (!fs::exists(branchPath)) {
+        std::cout << "Branch not found: " << branchName << "\n";
+        return;
+    }
+
+    // Get commit hashes
+    std::string ourCommit = getCurrentCommitHash();
+    std::ifstream targetFile(branchPath);
+    std::string theirCommit;
+    std::getline(targetFile, theirCommit);
+
+    // Find common ancestor (LCA)
+    std::string ancestor = findCommonAncestor(ourCommit, theirCommit);
+    if (ancestor.empty()) {
+        std::cout << "Cannot find common ancestor.\n";
+        return;
+    }
+
+    // Read files from all three points (ours, theirs, ancestor)
+    std::map<std::string, std::string> ourFiles, theirFiles, baseFiles;
+    auto readFiles = [](const std::string& commit, auto& files) {
+        std::ifstream commitFile(".minigit/objects/" + commit);
+        std::string line;
+        for (int i = 0; i < 3; ++i) std::getline(commitFile, line);
+        while (std::getline(commitFile, line)) {
+            if (line.empty()) continue;
+            std::istringstream iss(line);
+            std::string fname, blob;
+            iss >> fname >> blob;
+            if (!fname.empty() && !blob.empty()) files[fname] = blob;
+        }
+    };
+
+    readFiles(ourCommit, ourFiles);
+    readFiles(theirCommit, theirFiles);
+    readFiles(ancestor, baseFiles);
+
+    // Perform three-way merge
+    bool conflict = false;
+    for (const auto& [fname, theirBlob] : theirFiles) {
+        auto ourIt = ourFiles.find(fname);
+        auto baseIt = baseFiles.find(fname);
+
+        // Conflict detection
+        if (ourIt != ourFiles.end() && ourIt->second != theirBlob && 
+            (baseIt == baseFiles.end() || ourIt->second != baseIt->second)) {
+            std::cout << "CONFLICT: " << fname << "\n";
+            conflict = true;
+            
+            // Write conflict markers
+            std::ofstream conflictFile(fname + ".rej");
+            conflictFile << "<<<<<<< our changes\n"
+                         << readBlobContent(ourIt->second) 
+                         << "=======\n"
+                         << readBlobContent(theirBlob)
+                         << ">>>>>>> their changes\n";
+            continue;
+        }
+
+        // Safe to apply their changes
+        std::ifstream blobFile(".minigit/objects/" + theirBlob, std::ios::binary);
+        std::ofstream outFile(fname, std::ios::binary);
+        outFile << blobFile.rdbuf();
+    }
+
+    // Create merge commit if no conflicts
+    if (!conflict) {
+        std::ofstream(".minigit/MERGE_HEAD") << theirCommit;
+        commit("Merge branch '" + branchName + "'", true);
+    } else {
+        std::cout << "Resolve conflicts and commit manually\n";
+    }
+}
 void MiniGit::diff(const std::string& commit1, const std::string& commit2) {
     namespace fs = std::filesystem;
 
