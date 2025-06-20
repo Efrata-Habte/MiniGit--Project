@@ -47,7 +47,9 @@ void MiniGit::add(const std::string& filename) {
         outFile << content;
         outFile.close();
     }
-
+    std::ofstream indexFile("index", std::ios::app);
+    indexFile << filename << " " << hash << "\n";
+    indexFile.close();
 
     }
 
