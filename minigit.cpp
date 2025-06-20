@@ -52,7 +52,66 @@ void MiniGit::add(const std::string& filename) {
     indexFile.close();
     std::cout << "Added " << filename << " (" << hash.substr(0, 8) << ")\n";
 
-
     }
 
+void MiniGit::log() {
+    std::string commitHash;
+    std::ifstream headFile(".minigit/HEAD");
+    std::string refLine;
+    std::getline(headFile, refLine);
+    
+    if (refLine.find("ref:") == 0) {
+        std::string branchFile = ".minigit/" + refLine.substr(5);
+        std::ifstream bFile(branchFile);
+        std::getline(bFile, commitHash);
+    } else {
+        commitHash = refLine;
+    }
 
+    while (!commitHash.empty()) {
+        std::ifstream commitFile(".minigit/objects/" + commitHash);
+        if (!commitFile) break;
+
+        std::vector<std::string> parents; // Changed to handle multiple parents
+        std::string date, message, line;
+        
+        while (std::getline(commitFile, line)) {
+            if (line.find("parent: ") == 0) {
+                parents.push_back(line.substr(8)); // Store all parents
+            }
+            else if (line.find("date: ") == 0) date = line.substr(6);
+            else if (line.find("message: ") == 0) message = line.substr(9);
+        }
+
+        std::cout << "commit " << commitHash << "\n";
+        if (parents.size() > 1) { // New: Show merge info
+            std::cout << "Merge: ";
+            for (size_t i = 0; i < parents.size(); ++i) {
+                std::cout << parents[i].substr(0, 8);
+                if (i != parents.size() - 1) std::cout << " ";
+            }
+            std::cout << "\n";
+        }
+        std::cout << "Date:   " << date;
+        std::cout << "    " << message << "\n\n";
+        
+        commitHash = parents.empty() ? "" : parents[0]; // Follow first parent
+    }
+}
+
+void MiniGit::branch(const std::string& branchName) {
+    // Create a new branch pointer to current commit
+    std::ifstream headFile(".minigit/HEAD");
+    std::string refLine;
+    std::getline(headFile, refLine);
+    std::string branchRef = refLine.substr(5); // skip "ref: "
+    headFile.close();
+    std::ifstream branchHead(".minigit/" + branchRef);
+    std::string currentCommit;
+    std::getline(branchHead, currentCommit);
+    branchHead.close();
+    std::ofstream newBranch(".minigit/refs/heads/" + branchName);
+    newBranch << currentCommit << "\n";
+    newBranch.close();
+    std::cout << "Branch '" << branchName << "' created at " << currentCommit.substr(0, 8) << "\n";
+}
