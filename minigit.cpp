@@ -40,6 +40,14 @@ void MiniGit::add(const std::string& filename) {
     buffer << inFile.rdbuf();
     std::string content = buffer.str();
     std::string hash = sha1(content);
+    
+    fs::path objectPath = ".minigit/objects/" + hash;
+    if (!fs::exists(objectPath)) {
+        std::ofstream outFile(objectPath, std::ios::binary);
+        outFile << content;
+        outFile.close();
+    }
+
 
     }
 
