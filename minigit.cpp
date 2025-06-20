@@ -9,3 +9,12 @@
 #include <map>
 
 namespace fs = std::filesystem;
+
+void MiniGit::init() {
+    fs::path minigitDir = ".minigit";
+    if (fs::exists(minigitDir)) {
+        std::cout << ".minigit already exists.\n";
+        return;
+    }
+}
+
