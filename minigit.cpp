@@ -260,4 +260,95 @@ void MiniGit::checkout(const std::string& name) {
         headFile.close();
         std::cout << "HEAD is now at " << commitHash.substr(0, 8) << "\n";
     }
-    
+
+//Compares the differences between two MiniGit commits.
+void MiniGit::diff(const std::string& commit1, const std::string& commit2) {
+    namespace fs = std::filesystem;
+
+    // Helper to read file contents into vector of lines
+    auto readLines = [](const std::string& blob) -> std::vector<std::string> {
+        std::ifstream file(".minigit/objects/" + blob);
+        std::vector<std::string> lines;
+        std::string line;
+        while (std::getline(file, line)) {
+            lines.push_back(line);
+        }
+        return lines;
+    };
+
+    // Load file lists for both commits
+    std::map<std::string, std::string> files1, files2;
+
+    auto readFiles = [](const std::string& commit, std::map<std::string, std::string>& files) {
+        std::ifstream commitFile(".minigit/objects/" + commit);
+        std::string line;
+        for (int i = 0; i < 3; ++i) std::getline(commitFile, line); // skip metadata
+        while (std::getline(commitFile, line)) {
+            if (line.empty()) continue;
+            std::istringstream iss(line);
+            std::string fname, blob;
+            iss >> fname >> blob;
+            if (!fname.empty() && !blob.empty()) files[fname] = blob;
+        }
+    };
+
+    readFiles(commit1, files1);
+    readFiles(commit2, files2);
+
+    // Combine all unique file names
+    std::set<std::string> allFiles;
+    for (const auto& [fname, _] : files1) allFiles.insert(fname);
+    for (const auto& [fname, _] : files2) allFiles.insert(fname);
+
+    // Compare each file
+    for (const auto& fname : allFiles) {
+        auto it1 = files1.find(fname);
+        auto it2 = files2.find(fname);
+
+        if (it1 == files1.end()) {
+            std::cout << "\nFile added in " << commit2 << ": " << fname << "\n";
+            std::vector<std::string> lines2 = readLines(it2->second);
+            for (const auto& line : lines2) {
+                std::cout << "+ " << line << "\n";
+            }
+            continue;
+        }
+        if (it2 == files2.end()) {
+            std::cout << "\nFile removed in " << commit2 << ": " << fname << "\n";
+            std::vector<std::string> lines1 = readLines(it1->second);
+            for (const auto& line : lines1) {
+                std::cout << "- " << line << "\n";
+            }
+            continue;
+        }
+        
+        // If we get here, the file exists in both commits
+        if (it1->second != it2->second) {
+            std::cout << "\nFile modified: " << fname << "\n";
+        }
+
+        // Both commits have the file, compare content line by line
+        std::vector<std::string> lines1 = readLines(it1->second);
+        std::vector<std::string> lines2 = readLines(it2->second);
+
+        std::cout << "--- " << fname << "\n";
+
+        size_t maxLines = std::max(lines1.size(), lines2.size());
+        for (size_t i = 0; i < maxLines; ++i) {
+            std::string l1 = (i < lines1.size()) ? lines1[i] : "";
+            std::string l2 = (i < lines2.size()) ? lines2[i] : "";
+
+            if (l1 == l2) {
+                continue; // no change
+            }
+            if (i >= lines1.size()) {
+                std::cout << "+ " << l2 << "\n"; // new line added
+            } else if (i >= lines2.size()) {
+                std::cout << "- " << l1 << "\n"; // line deleted
+            } else {
+                std::cout << "- " << l1 << "\n";
+                std::cout << "+ " << l2 << "\n";
+            }
+        }
+    }
+}
