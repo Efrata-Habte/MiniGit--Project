@@ -23,6 +23,9 @@ void MiniGit::init() {
     std::ofstream headFile(minigitDir / "HEAD");
     headFile << "ref: refs/heads/main\n";
     headFile.close();
+    
+    std::cout << "Initialized empty MiniGit repository in .minigit/\n";
+
 
 
 }
