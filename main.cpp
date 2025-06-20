@@ -42,3 +42,20 @@ int main(int argc, char* argv[]) {
     // Handle checkout command
     else if (command == "checkout" && argc > 2) {
         MiniGit::checkout(argv[2]);
+    }
+    // Handle merge command
+    else if (command == "merge" && argc > 2) {
+        MiniGit::merge(argv[2]);
+    }
+    // Handle diff command
+    else if (command == "diff" && argc > 3) {
+        MiniGit::diff(argv[2], argv[3]);
+    }
+    // Unknown command
+    else {
+        std::cerr << "Invalid command or missing arguments\n";
+        return 1;
+    }
+
+    return 0;
+}
