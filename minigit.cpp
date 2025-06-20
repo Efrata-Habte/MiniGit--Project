@@ -260,6 +260,28 @@ void MiniGit::checkout(const std::string& name) {
         headFile.close();
         std::cout << "HEAD is now at " << commitHash.substr(0, 8) << "\n";
     }
+    // Restore working directory to commit state
+    // Find commit hash
+    if (commitHash.empty()) return;
+    fs::path commitPath = ".minigit/objects/" + commitHash;
+    std::ifstream commitFile(commitPath);
+    if (!commitFile) return;
+    std::string line;
+    // Skip commit metadata
+    for (int i = 0; i < 3; ++i) std::getline(commitFile, line);
+    // Restore files
+    while (std::getline(commitFile, line)) {
+        if (line.empty()) continue;
+        std::istringstream iss(line);
+        std::string fname, blob;
+        iss >> fname >> blob;
+        if (!fname.empty() && !blob.empty()) {
+            std::ifstream blobFile(".minigit/objects/" + blob, std::ios::binary);
+            std::ofstream outFile(fname, std::ios::binary);
+            outFile << blobFile.rdbuf();
+        }
+    }
+}
 
 //Compares the differences between two MiniGit commits.
 void MiniGit::diff(const std::string& commit1, const std::string& commit2) {
