@@ -54,6 +54,122 @@ void MiniGit::add(const std::string& filename) {
 
     }
 
+void MiniGit::commit(const std::string& message, bool isMerge) {
+    // Check if there are staged files to commit
+    std::ifstream indexFile(".minigit/index");
+    if (!indexFile) {
+        std::cout << "Nothing to commit.\n";
+        return;
+    }
+
+    // Read all staged files and their hashes
+    std::string files_blobs, line;
+    while (std::getline(indexFile, line)) {
+        files_blobs += line + "\n";
+    }
+
+    // Get current commit hash (parent of this new commit)
+    std::string headCommitHash;
+    std::ifstream headFile(".minigit/HEAD");
+    std::string refLine;
+    std::getline(headFile, refLine);
+    if (refLine.find("ref:") == 0) {
+        std::string branchFile = ".minigit/" + refLine.substr(5);
+        std::ifstream bFile(branchFile);
+        std::getline(bFile, headCommitHash);
+    }
+
+    // Create timestamp for commit
+    auto now = std::chrono::system_clock::now();
+    std::time_t now_c = std::chrono::system_clock::to_time_t(now);
+    
+    // Build commit object content
+    std::ostringstream commitObj;
+    
+    // Add parent commit reference
+    if (!headCommitHash.empty()) {
+        commitObj << "parent: " << headCommitHash << "\n";
+    }
+    
+    // For merge commits, add second parent
+    if (isMerge) {
+        std::ifstream mergeFile(".minigit/MERGE_HEAD");
+        std::string mergeParent;
+        if (mergeFile && std::getline(mergeFile, mergeParent)) {
+            commitObj << "parent: " << mergeParent << "\n";
+        }
+        fs::remove(".minigit/MERGE_HEAD"); // Clean up merge state
+    }
+    
+    // Add commit metadata
+    commitObj << "date: " << std::ctime(&now_c);  // Timestamp
+    commitObj << "message: " << message << "\n";  // Commit message
+    commitObj << files_blobs;                     // File listings
+    
+    // Create unique hash for this commit
+    std::string commitStr = commitObj.str();
+    std::string commitHash = sha1(commitStr);
+    
+    // Store commit object
+    std::ofstream commitFile(".minigit/objects/" + commitHash);
+    commitFile << commitStr;
+    commitFile.close();
+
+    // Update branch reference if not in detached HEAD state
+    if (refLine.find("ref:") == 0) {
+        std::string branchFile = ".minigit/" + refLine.substr(5);
+        std::ofstream bFile(branchFile);
+        bFile << commitHash;
+    }
+    
+    // Clear staging area
+    std::ofstream(".minigit/index", std::ios::trunc).close();
+    std::cout << "Committed " << commitHash.substr(0, 8) << ": " << message << "\n";
+}
+// Helper Functions
+// Gets the current commit hash from HEAD
+std::string getCurrentCommitHash() {
+    std::ifstream headFile(".minigit/HEAD");
+    std::string refLine;
+    std::getline(headFile, refLine);
+    
+    // If HEAD points to a branch (not detached)
+    if (refLine.find("ref:") == 0) {
+        std::string branchFile = ".minigit/" + refLine.substr(5);
+        std::ifstream bFile(branchFile);
+        std::string commitHash;
+        std::getline(bFile, commitHash);
+        return commitHash;
+    }
+    return refLine; // Return raw commit hash in detached state
+}
+
+// Finds where two commit histories diverged
+std::string findCommonAncestor(const std::string& commit1, const std::string& commit2) {
+    std::unordered_set<std::string> commit1Parents;
+    std::string current = commit1;
+    
+    // Record all ancestors of first commit
+    while (!current.empty()) {
+        commit1Parents.insert(current);
+        std::ifstream commitFile(".minigit/objects/" + current);
+        std::string line;
+        std::getline(commitFile, line); // Read "parent: ..." line
+        current = line.find("parent: ") == 0 ? line.substr(8) : "";
+    }
+
+    // Check second commit's ancestors for matches
+    current = commit2;
+    while (!current.empty()) {
+        if (commit1Parents.count(current)) return current; // Found common ancestor
+        std::ifstream commitFile(".minigit/objects/" + current);
+        std::string line;
+        std::getline(commitFile, line);
+        current = line.find("parent: ") == 0 ? line.substr(8) : "";
+    }
+    return ""; // No common ancestor found
+}
+
 void MiniGit::log() {
     std::string commitHash;
     std::ifstream headFile(".minigit/HEAD");
