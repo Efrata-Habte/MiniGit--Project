@@ -35,4 +35,12 @@ void MiniGit::add(const std::string& filename) {
         return;
     }
 
+    std::ifstream inFile(filePath, std::ios::binary);
+    std::ostringstream buffer;
+    buffer << inFile.rdbuf();
+    std::string content = buffer.str();
+    std::string hash = sha1(content);
+
+    }
+
 
