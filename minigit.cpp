@@ -26,7 +26,13 @@ void MiniGit::init() {
     
     std::cout << "Initialized empty MiniGit repository in .minigit/\n";
 
-
-
 }
+
+void MiniGit::add(const std::string& filename) {
+    fs::path filePath = filename;
+    if (!fs::exists(filePath)) {
+        std::cout << "File not found: " << filename << "\n";
+        return;
+    }
+
 
